@@ -32,23 +32,36 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
     // Send request
     mg_printf(c,
-              "GET %s HTTP/1.0\r\n"
+              "GET %s HTTP/1.1\r\n"
               "Host: %.*s\r\n"
+              "Connection: keep-alive\r\n"
+              "Keep-Alive: timeout=60\r\n"
               "\r\n",
               mg_url_uri(s_url), (int) host.len, host.ptr);
   } else if (ev == MG_EV_HTTP_CHUNK) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    MG_INFO(("%.*s", (int) hm->chunk.len, hm->chunk.ptr));
+    MG_INFO(("CHUNK %d", (int) hm->chunk.len));
+    //MG_INFO(("%.*s", (int) hm->chunk.len, hm->chunk.ptr));
     mg_http_delete_chunk(c, hm);
     if (hm->chunk.len == 0) *(bool *) fn_data = true;  // Last chunk
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    MG_INFO(("%.*s", (int) hm->body.len, hm->body.ptr));
+    MG_INFO(("MSG %d", (int) hm->body.len));
+    //MG_INFO(("%.*s", (int) hm->body.len, hm->body.ptr));
     c->is_closing = 1;         // Tell mongoose to close this connection
     *(bool *) fn_data = true;  // Tell event loop to stop
   } else if (ev == MG_EV_ERROR) {
     *(bool *) fn_data = true;  // Error, tell event loop to stop
+  } else if (ev == MG_EV_POLL) {
+    MG_INFO(("POLL..."));
+    struct mg_tls *tls = (struct mg_tls *)c->tls;  
+    if (tls) {
+      int bytes = SSL_pending(tls->ssl);
+      if (bytes > 0) {
+        MG_INFO(("SSL_pending has %d bytes!", bytes));
+      }
+    }
   }
 }
 
