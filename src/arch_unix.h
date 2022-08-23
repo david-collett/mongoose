@@ -48,6 +48,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#if defined(MG_ENABLE_AF_UNIX) && MG_ENABLE_AF_UNIX
+#include <sys/un.h>
+#endif
+
 #ifndef MG_ENABLE_DIRLIST
 #define MG_ENABLE_DIRLIST 1
 #endif

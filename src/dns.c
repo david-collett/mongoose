@@ -257,8 +257,15 @@ static void mg_sendnsreq(struct mg_connection *c, struct mg_str *name, int ms,
 void mg_resolve(struct mg_connection *c, const char *url) {
   struct mg_str host = mg_url_host(url);
   c->rem.port = mg_htons(mg_url_port(url));
-  if (mg_aton(host, &c->rem)) {
-    // host is an IP address, do not fire name resolution
+#if MG_ENABLE_AF_UNIX
+    c->rem.is_unix = (strncmp(url, "unix:", 5) == 0);
+    if (c->rem.is_unix) {
+      strncpy(c->rem.path, url + 7, sizeof(c->rem.path) - 1);
+      c->rem.path[sizeof(c->rem.path) -1] = 0;
+    }
+#endif
+  if (c->rem.is_unix || mg_aton(host, &c->rem)) {
+    // host is an IP address or path, do not fire name resolution
     mg_connect_resolved(c);
   } else {
     // host is not an IP, send DNS resolution request

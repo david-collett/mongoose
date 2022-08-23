@@ -53,10 +53,22 @@ union usa {
 #if MG_ENABLE_IPV6
   struct sockaddr_in6 sin6;
 #endif
+#if MG_ENABLE_AF_UNIX
+  struct sockaddr_un sun;
+#endif
 };
 
 static socklen_t tousa(struct mg_addr *a, union usa *usa) {
-  socklen_t len = sizeof(usa->sin);
+  socklen_t len = 0;
+#if MG_ENABLE_AF_UNIX
+  if (a->is_unix) {
+    len = sizeof(usa->sun);
+    usa->sun.sun_family = AF_UNIX;
+    strncpy(usa->sun.sun_path, a->path, sizeof(usa->sun.sun_path)); 
+    return len;
+  }
+#endif
+  len = sizeof(usa->sin);
   memset(usa, 0, sizeof(*usa));
   usa->sin.sin_family = AF_INET;
   usa->sin.sin_port = a->port;
@@ -216,14 +228,21 @@ bool mg_open_listener(struct mg_connection *c, const char *url) {
   SOCKET fd = INVALID_SOCKET;
   bool success = false;
   c->loc.port = mg_htons(mg_url_port(url));
-  if (!mg_aton(mg_url_host(url), &c->loc)) {
+#if MG_ENABLE_AF_UNIX
+  c->loc.is_unix = (strncmp(url, "unix:", 5) == 0);
+  if (c->loc.is_unix) {
+    strncpy(c->loc.path, url + 7, sizeof(c->loc.path) - 1);
+    c->loc.path[sizeof(c->loc.path) -1] = 0;
+  }
+#endif
+  if (!c->loc.is_unix && !mg_aton(mg_url_host(url), &c->loc)) {
     MG_ERROR(("invalid listening URL: %s", url));
   } else {
     union usa usa;
     socklen_t slen = tousa(&c->loc, &usa);
-    int on = 1, af = c->loc.is_ip6 ? AF_INET6 : AF_INET;
+    int on = 1, af = c->loc.is_unix ? AF_UNIX : c->loc.is_ip6 ? AF_INET6 : AF_INET;
     int type = strncmp(url, "udp:", 4) == 0 ? SOCK_DGRAM : SOCK_STREAM;
-    int proto = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
+    int proto = c->loc.is_unix ? 0 : type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
     (void) on;
 
     if ((fd = socket(af, type, proto)) == INVALID_SOCKET) {
@@ -361,7 +380,7 @@ static void setsockopts(struct mg_connection *c) {
 void mg_connect_resolved(struct mg_connection *c) {
   // char buf[40];
   int type = c->is_udp ? SOCK_DGRAM : SOCK_STREAM;
-  int rc, af = c->rem.is_ip6 ? AF_INET6 : AF_INET;
+  int rc, af = c->rem.is_unix ? AF_UNIX : c->rem.is_ip6 ? AF_INET6 : AF_INET;
   // mg_straddr(&c->rem, buf, sizeof(buf));
   c->fd = S2PTR(socket(af, type, 0));
   c->is_resolving = 0;

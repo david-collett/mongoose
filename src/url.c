@@ -39,6 +39,10 @@ static struct url urlparse(const char *url) {
 }
 
 struct mg_str mg_url_host(const char *url) {
+#if MG_ENABLE_AF_UNIX
+  if (strncmp(url, "unix:", 5) == 0)
+    return mg_str(url + 7);
+#endif
   struct url u = urlparse(url);
   size_t n = u.port  ? u.port - u.host - 1
              : u.uri ? u.uri - u.host

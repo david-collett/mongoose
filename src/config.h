@@ -44,6 +44,10 @@
 #define MG_ENABLE_IPV6 0
 #endif
 
+#ifndef MG_ENABLE_AF_UNIX
+#define MG_ENABLE_AF_UNIX 0
+#endif
+
 #ifndef MG_ENABLE_MD5
 #define MG_ENABLE_MD5 0
 #endif
