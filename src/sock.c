@@ -233,6 +233,8 @@ bool mg_open_listener(struct mg_connection *c, const char *url) {
   if (c->loc.is_unix) {
     strncpy(c->loc.path, url + 7, sizeof(c->loc.path) - 1);
     c->loc.path[sizeof(c->loc.path) -1] = 0;
+    /* support linux abstract socket namespace if path begins with '#' */
+    if (c->loc.path[0] == '#') c->loc.path[0] = '\0';
   }
 #endif
   if (!c->loc.is_unix && !mg_aton(mg_url_host(url), &c->loc)) {

@@ -262,6 +262,8 @@ void mg_resolve(struct mg_connection *c, const char *url) {
     if (c->rem.is_unix) {
       strncpy(c->rem.path, url + 7, sizeof(c->rem.path) - 1);
       c->rem.path[sizeof(c->rem.path) -1] = 0;
+      /* support linux abstract socket namespace if path begins with '#' */
+      if (c->rem.path[0] == '#') c->rem.path[0] = '\0';
     }
 #endif
   if (c->rem.is_unix || mg_aton(host, &c->rem)) {
