@@ -48,7 +48,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#if defined(MG_ENABLE_AF_UNIX) && MG_ENABLE_AF_UNIX
+#ifndef MG_ENABLE_AF_UNIX
+#define MG_ENABLE_AF_UNIX 1
+#endif
+#if MG_ENABLE_AF_UNIX
 #include <sys/un.h>
 #endif
 
