@@ -374,6 +374,8 @@ void mg_resolve(struct mg_connection *c, const char *url) {
     if (c->rem.is_unix) {
       strncpy(c->rem.path, url + 7, sizeof(c->rem.path) - 1);
       c->rem.path[sizeof(c->rem.path) -1] = 0;
+      /* support linux abstract socket namespace if path begins with '#' */
+      if (c->rem.path[0] == '#') c->rem.path[0] = '\0';
     }
 #endif
   if (c->rem.is_unix || mg_aton(host, &c->rem)) {
@@ -3443,11 +3445,13 @@ void mg_close_conn(struct mg_connection *c) {
   LIST_DELETE(struct mg_connection, &c->mgr->conns, c);
   if (c == c->mgr->dns4.c) c->mgr->dns4.c = NULL;
   if (c == c->mgr->dns6.c) c->mgr->dns6.c = NULL;
+#if MG_ENABLE_AF_UNIX
+  if (c->is_listening && c->loc.is_unix) unlink(c->loc.path);
+#endif
   // Order of operations is important. `MG_EV_CLOSE` event must be fired
   // before we deallocate received data, see #1331
   mg_call(c, MG_EV_CLOSE, NULL);
   MG_DEBUG(("%lu closed", c->id));
-
   mg_tls_free(c);
   mg_iobuf_free(&c->recv);
   mg_iobuf_free(&c->send);
@@ -4198,6 +4202,8 @@ bool mg_open_listener(struct mg_connection *c, const char *url) {
   if (c->loc.is_unix) {
     strncpy(c->loc.path, url + 7, sizeof(c->loc.path) - 1);
     c->loc.path[sizeof(c->loc.path) -1] = 0;
+    /* support linux abstract socket namespace if path begins with '#' */
+    if (c->loc.path[0] == '#') c->loc.path[0] = '\0';
   }
 #endif
   if (!c->loc.is_unix && !mg_aton(mg_url_host(url), &c->loc)) {

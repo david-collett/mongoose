@@ -474,7 +474,10 @@ extern int SockSet(SOCKET hSock, int Type, int Prop, void *pbuf, int size);
 #include <time.h>
 #include <unistd.h>
 
-#if defined(MG_ENABLE_AF_UNIX) && MG_ENABLE_AF_UNIX
+#ifndef MG_ENABLE_AF_UNIX
+#define MG_ENABLE_AF_UNIX 1
+#endif
+#if MG_ENABLE_AF_UNIX
 #include <sys/un.h>
 #endif
 
@@ -656,10 +659,6 @@ int sscanf(const char *, const char *, ...);
 
 #ifndef MG_ENABLE_IPV6
 #define MG_ENABLE_IPV6 0
-#endif
-
-#ifndef MG_ENABLE_AF_UNIX
-#define MG_ENABLE_AF_UNIX 0
 #endif
 
 #ifndef MG_ENABLE_MD5
@@ -1033,7 +1032,7 @@ struct mg_addr {
   uint32_t ip;           // IP address in network byte order
   uint8_t ip6[16];       // IPv6 address
 #if MG_ENABLE_AF_UNIX
-  char path[108];        // Unix socket path
+  char path[104];        // Unix socket path
 #endif
   unsigned is_ip6  : 1;  // True when address is IPv6 address
   unsigned is_unix : 1;  // True when address is Unix socket
